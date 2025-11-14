@@ -1,30 +1,61 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import type { Card } from '$lib/cards';
   
   let searchQuery = '';
   let isLoading = false;
-  let cards = [];
+  let cards: Card[] = [];
   let debounceTimer: NodeJS.Timeout;
-  let selectedCard = null;
+  let selectedCard: Card | null = null;
   let isModalOpen = false;
-  let modalElement: HTMLElement;
 
   function closeModal() {
     isModalOpen = false;
     document.body.style.overflow = 'auto';
   }
 
-  function openModal(card: any) {
+  function handleOverlayClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      closeModal();
+    }
+  }
+
+  function handleOverlayKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (event.target === event.currentTarget) {
+        closeModal();
+      }
+    }
+  }
+
+  function openModal(card: Card) {
     selectedCard = card;
     isModalOpen = true;
     document.body.style.overflow = 'hidden';
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
+  function handleCardKeyDown(event: KeyboardEvent, card: Card) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openModal(card);
+    }
+  }
+
+  function handleEscapeKey(event: KeyboardEvent) {
     if (event.key === 'Escape' && isModalOpen) {
       closeModal();
     }
   }
+
+  onMount(() => {
+    window.addEventListener('keydown', handleEscapeKey);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleEscapeKey);
+  });
   
   async function search() {
     if (!searchQuery.trim()) {
@@ -35,7 +66,7 @@
     isLoading = true;
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-      cards = await response.json();
+      cards = await response.json() as Card[];
     } catch (error) {
       console.error('Search failed:', error);
       cards = [];
@@ -50,7 +81,7 @@
   }
 </script>
 
-<div class="container" on:keydown={handleKeyDown}>
+<div class="container">
   <h1>One Piece Card Search</h1>
   
   <div class="search-container">
@@ -75,7 +106,14 @@
     {#if cards.length > 0}
       <div class="card-grid">
         {#each cards as card}
-          <div class="card" on:click={() => openModal(card)}>
+          <div 
+            class="card" 
+            role="button"
+            tabindex="0"
+            on:click={() => openModal(card)}
+            on:keydown={(e) => handleCardKeyDown(e, card)}
+            aria-label="View {card.name} card details"
+          >
             <div class="card-image-placeholder">
               <div class="card-id">{card.id}</div>
               <div class="card-name">{card.name}</div>
@@ -104,11 +142,18 @@
   </div>
 
   {#if isModalOpen}
-    <div class="modal-overlay" on:click={closeModal}>
+    <div 
+      class="modal-overlay" 
+      role="dialog"
+      aria-modal="true"
+      aria-label="Card image modal"
+      tabindex="-1"
+      on:click={handleOverlayClick}
+      on:keydown={handleOverlayKeyDown}
+    >
       <div 
         class="modal" 
         transition:fly={{ y: 20, duration: 200 }}
-        on:click|stopPropagation
       >
         <button 
           class="close-button" 
