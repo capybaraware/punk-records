@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
-import { join } from 'path';
+import { join, resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 export interface Card {
   id: string;
@@ -20,20 +21,30 @@ export interface Card {
 
 // This is a helper to get the project root path
 function getProjectRoot() {
-  // In development, we might be in .svelte-kit directory
-  const cwd = process.cwd();
-  if (cwd.endsWith('.svelte-kit')) {
-    return join(cwd, '..');
-  }
-  return cwd;
+  // Get the directory of the current file
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  
+  // From web-app/src/lib, go up to web-app, then up to project root
+  const webAppDir = resolve(__dirname, '../..');
+  const projectRoot = resolve(webAppDir, '..');
+  
+  return projectRoot;
+}
+
+function getCardsDir() {
+  const projectRoot = getProjectRoot();
+  // Path to english/cards from project root
+  // This works when the repo root is the Vercel root directory
+  return join(projectRoot, 'english', 'cards');
 }
 
 export async function searchCards(query: string): Promise<Card[]> {
-  // Use the absolute path to the cards directory
-  const cardsDir = 'c:\\repos\\punk-records\\english\\cards';
+  const cardsDir = getCardsDir();
   
   console.log('Searching in directory:', cardsDir);
   console.log('Current working directory:', process.cwd());
+  console.log('Project root:', getProjectRoot());
   
   try {
     const stats = await fs.stat(cardsDir);
