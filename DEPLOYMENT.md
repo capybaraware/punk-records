@@ -6,25 +6,30 @@
    - Set the **Root Directory** to the repository root (not `web-app`)
    - The build command and output directory are already configured in `vercel.json`
 
-2. **Path Resolution:**
-   - The code automatically resolves paths relative to the project root
-   - From `web-app/src/lib`, it goes up to `web-app`, then up to the project root
-   - This allows access to the `english/cards` directory
+2. **Automatic Card Data Copying:**
+   - The `prebuild` script automatically copies the `english` directory into `web-app` before building
+   - This ensures the card data is included in the Vercel deployment
+   - The copied directory is in `.gitignore` and won't be committed
 
 ## How It Works
 
-The path resolution in `web-app/src/lib/cards.ts`:
-- Calculates the project root by going up from the current file location
-- Constructs the path to `english/cards` relative to the project root
-- Works in both development and production environments
+1. **Build Process:**
+   - `prebuild` script runs `copy-cards.js` which copies `english/` from project root to `web-app/english/`
+   - Then the normal build process runs
+   - Vercel packages everything in `web-app`, including the copied card data
 
-## Alternative: If Root Directory Must Be `web-app`
+2. **Path Resolution:**
+   - The code in `web-app/src/lib/cards.ts` tries multiple locations:
+     - First: `web-app/english/cards` (copied during build - used in Vercel)
+     - Second: `../english/cards` from project root (used in development)
+     - Additional fallbacks for different environments
+   - This ensures it works in both development and production
 
-If you need to set the root directory to `web-app` in Vercel, you'll need to:
+## Troubleshooting
 
-1. Copy the card directories into `web-app` during build, OR
-2. Use environment variables to specify the card data location, OR
-3. Store card data in a database or external service
-
-The current setup assumes the root directory is set to the repository root.
+If you get a 404 error:
+1. Check Vercel build logs to ensure `prebuild` script ran successfully
+2. Verify the `english` directory exists in the project root
+3. Check Vercel function logs for the actual path being tried
+4. Ensure Root Directory is set to repository root in Vercel dashboard
 

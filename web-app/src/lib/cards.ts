@@ -32,27 +32,54 @@ function getProjectRoot() {
   return projectRoot;
 }
 
-function getCardsDir() {
+async function findCardsDirectory(): Promise<string> {
+  const cwd = process.cwd();
   const projectRoot = getProjectRoot();
-  // Path to english/cards from project root
-  // This works when the repo root is the Vercel root directory
-  return join(projectRoot, 'english', 'cards');
+  const webAppDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  
+  // Try multiple possible locations (in order of preference)
+  const possiblePaths = [
+    // 1. In web-app/english/cards (copied during build for Vercel)
+    join(webAppDir, 'english', 'cards'),
+    // 2. Relative to project root (development/local)
+    join(projectRoot, 'english', 'cards'),
+    // 3. Relative to current working directory
+    join(cwd, 'english', 'cards'),
+    // 4. If we're in web-app, go up one level
+    cwd.includes('web-app') ? join(cwd, '..', 'english', 'cards') : null,
+    cwd.endsWith('web-app') ? join(cwd, '..', 'english', 'cards') : null,
+    // 5. From .svelte-kit build directory
+    cwd.includes('.svelte-kit') ? join(cwd, '..', 'english', 'cards') : null,
+  ].filter((p): p is string => p !== null);
+  
+  // Try each path
+  for (const path of possiblePaths) {
+    try {
+      const stats = await fs.stat(path);
+      if (stats.isDirectory()) {
+        console.log('Found cards directory at:', path);
+        return path;
+      }
+    } catch (err) {
+      // Path doesn't exist, try next one
+      continue;
+    }
+  }
+  
+  // If none found, throw error with all attempted paths
+  throw new Error(
+    `Could not find cards directory. Tried: ${possiblePaths.join(', ')}\n` +
+    `Current working directory: ${cwd}\n` +
+    `Project root: ${projectRoot}`
+  );
 }
 
 export async function searchCards(query: string): Promise<Card[]> {
-  const cardsDir = getCardsDir();
+  const cardsDir = await findCardsDirectory();
   
   console.log('Searching in directory:', cardsDir);
   console.log('Current working directory:', process.cwd());
   console.log('Project root:', getProjectRoot());
-  
-  try {
-    const stats = await fs.stat(cardsDir);
-    console.log('Directory exists and is directory:', stats.isDirectory());
-  } catch (err) {
-    console.error('Error accessing cards directory:', err);
-    throw new Error(`Could not access cards directory at: ${cardsDir}`);
-  }
   
   const results: Card[] = [];
   
