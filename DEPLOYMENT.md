@@ -4,12 +4,17 @@
 
 1. **In Vercel Dashboard:**
    - Set the **Root Directory** to the repository root (not `web-app`)
-   - The build command and output directory are already configured in `vercel.json`
+   - The build command is configured in `vercel.json` to run from `web-app`
+   - Framework: SvelteKit (should auto-detect with `@sveltejs/adapter-vercel`)
 
 2. **Automatic Card Data Copying:**
    - The `prebuild` script automatically copies the `english` directory into `web-app` before building
    - This ensures the card data is included in the Vercel deployment
    - The copied directory is in `.gitignore` and won't be committed
+
+3. **Adapter Configuration:**
+   - Using `@sveltejs/adapter-vercel` for optimal Vercel deployment
+   - Output is automatically placed in `.vercel/output` by the adapter
 
 ## How It Works
 

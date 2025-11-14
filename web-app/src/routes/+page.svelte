@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { fly } from 'svelte/transition';
+  import { browser } from '$app/environment';
   import type { Card } from '$lib/cards';
   
   let searchQuery = '';
@@ -12,7 +13,9 @@
 
   function closeModal() {
     isModalOpen = false;
-    document.body.style.overflow = 'auto';
+    if (browser) {
+      document.body.style.overflow = 'auto';
+    }
   }
 
   function handleOverlayClick(event: MouseEvent) {
@@ -33,7 +36,9 @@
   function openModal(card: Card) {
     selectedCard = card;
     isModalOpen = true;
-    document.body.style.overflow = 'hidden';
+    if (browser) {
+      document.body.style.overflow = 'hidden';
+    }
   }
 
   function handleCardKeyDown(event: KeyboardEvent, card: Card) {
@@ -50,11 +55,15 @@
   }
 
   onMount(() => {
-    window.addEventListener('keydown', handleEscapeKey);
+    if (browser) {
+      window.addEventListener('keydown', handleEscapeKey);
+    }
   });
 
   onDestroy(() => {
-    window.removeEventListener('keydown', handleEscapeKey);
+    if (browser) {
+      window.removeEventListener('keydown', handleEscapeKey);
+    }
   });
   
   async function search() {
