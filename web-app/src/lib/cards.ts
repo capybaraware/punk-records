@@ -34,52 +34,55 @@ function getProjectRoot() {
 
 async function findCardsDirectory(): Promise<string> {
   const cwd = process.cwd();
-  const projectRoot = getProjectRoot();
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   
-  // In Vercel serverless, the code is bundled, so we need to use __dirname
-  // which points to the actual location of the bundled file
-  const libDir = __dirname;
-  const webAppDir = resolve(libDir, '../..');
+  // In Vercel serverless, files included via includeFiles are accessible
+  // relative to the function's working directory (/var/task)
+  // The includeFiles pattern 'src/lib/assets/**' should preserve the path structure
+  
+  // Generate paths by walking up from __dirname
+  const generatePathsFromDir = (startDir: string): string[] => {
+    const paths: string[] = [];
+    let current = startDir;
+    for (let i = 0; i < 15; i++) {
+      paths.push(join(current, 'src', 'lib', 'assets', 'english', 'cards'));
+      paths.push(join(current, 'assets', 'english', 'cards'));
+      paths.push(join(current, 'english', 'cards'));
+      const parent = resolve(current, '..');
+      if (parent === current) break; // Reached filesystem root
+      current = parent;
+    }
+    return paths;
+  };
   
   // Try multiple possible locations (in order of preference)
+  // Based on build output, files are copied to:
+  // - .svelte-kit/output/server/assets/english (during build)
+  // - .vercel/output/assets/english (during build)
+  // - assets/english (during build)
+  // At runtime in /var/task, includeFiles should make src/lib/assets/** accessible
   const possiblePaths = [
-    // 1. From /var/task/assets (Vercel serverless - postbuild copy location)
-    join(cwd, 'assets', 'english', 'cards'),
-    // 2. From .svelte-kit/output/server/assets (serverless function bundle)
-    join(cwd, '.svelte-kit', 'output', 'server', 'assets', 'english', 'cards'),
-    // 3. Relative to lib directory (for bundled code in Vercel)
-    join(libDir, 'assets', 'english', 'cards'),
-    join(libDir, '..', 'assets', 'english', 'cards'),
-    // 4. From .vercel/output/assets (Vercel output)
-    join(cwd, '.vercel', 'output', 'assets', 'english', 'cards'),
-    // 5. Relative to web-app directory
-    join(webAppDir, 'src', 'lib', 'assets', 'english', 'cards'),
-    // 6. In web-app/english/cards (copied during build for Vercel - legacy)
-    join(webAppDir, 'english', 'cards'),
-    // 7. From current working directory (Vercel serverless functions)
+    // 1. From working directory with preserved src/lib/assets structure (Vercel includeFiles)
+    // This is the primary path - includeFiles: ['src/lib/assets/**'] should make this work
     join(cwd, 'src', 'lib', 'assets', 'english', 'cards'),
+    // 2. From /var/task/assets (postbuild copy location - if included in function bundle)
+    join(cwd, 'assets', 'english', 'cards'),
+    // 3. Walk up from __dirname to find the directory (most reliable fallback)
+    ...generatePathsFromDir(__dirname),
+    // 4. From .svelte-kit/output/server/assets (if still accessible at runtime)
+    join(cwd, '.svelte-kit', 'output', 'server', 'assets', 'english', 'cards'),
+    // 5. From .vercel/output/assets (if still accessible at runtime)
+    join(cwd, '.vercel', 'output', 'assets', 'english', 'cards'),
+    // 6. From current working directory (alternative structures)
     join(cwd, 'lib', 'assets', 'english', 'cards'),
-    // 8. Relative to project root (development/local - legacy)
-    join(projectRoot, 'english', 'cards'),
-    // 9. Relative to current working directory
     join(cwd, 'english', 'cards'),
-    // 10. If we're in web-app, go up one level
-    cwd.includes('web-app') ? join(cwd, '..', 'english', 'cards') : null,
-    cwd.endsWith('web-app') ? join(cwd, '..', 'english', 'cards') : null,
-    // 11. From .svelte-kit build directory
-    cwd.includes('.svelte-kit') ? join(cwd, '..', 'src', 'lib', 'assets', 'english', 'cards') : null,
-    // 12. Vercel serverless function paths
-    join(cwd, '.vercel', 'output', 'functions', 'api', 'search', 'src', 'lib', 'assets', 'english', 'cards'),
-    join(cwd, '.vercel', 'output', 'static', 'src', 'lib', 'assets', 'english', 'cards'),
-  ].filter((p): p is string => p !== null);
+  ];
   
   console.log('Attempting to find cards directory...');
   console.log('Current working directory:', cwd);
-  console.log('Lib directory (from import.meta.url):', libDir);
-  console.log('Web app directory:', webAppDir);
-  console.log('Project root:', projectRoot);
+  console.log('__filename:', __filename);
+  console.log('__dirname:', __dirname);
   
   // Try each path
   for (const path of possiblePaths) {
@@ -100,18 +103,33 @@ async function findCardsDirectory(): Promise<string> {
     }
   }
   
-  // If none found, throw error with all attempted paths and debug info
-  const errorMsg = `Could not find cards directory.\n` +
-    `Tried paths:\n${possiblePaths.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}\n` +
-    `Current working directory: ${cwd}\n` +
-    `Lib directory: ${libDir}\n` +
-    `Web app directory: ${webAppDir}\n` +
-    `Project root: ${projectRoot}\n` +
-    `__filename: ${__filename}\n` +
-    `__dirname: ${__dirname}`;
+  // If none found, try to list what's actually in the working directory for debugging
+  let debugInfo = `Could not find cards directory.\n`;
+  debugInfo += `Current working directory: ${cwd}\n`;
+  debugInfo += `__filename: ${__filename}\n`;
+  debugInfo += `__dirname: ${__dirname}\n`;
   
-  console.error(errorMsg);
-  throw new Error(errorMsg);
+  try {
+    const cwdContents = await fs.readdir(cwd);
+    debugInfo += `\nContents of working directory (${cwd}):\n${cwdContents.slice(0, 20).join(', ')}\n`;
+  } catch (e) {
+    debugInfo += `\nCould not read working directory: ${e}\n`;
+  }
+  
+  try {
+    const dirnameContents = await fs.readdir(__dirname);
+    debugInfo += `\nContents of __dirname (${__dirname}):\n${dirnameContents.slice(0, 20).join(', ')}\n`;
+  } catch (e) {
+    debugInfo += `\nCould not read __dirname: ${e}\n`;
+  }
+  
+  debugInfo += `\nTried paths:\n${possiblePaths.slice(0, 20).map((p, i) => `  ${i + 1}. ${p}`).join('\n')}\n`;
+  if (possiblePaths.length > 20) {
+    debugInfo += `  ... and ${possiblePaths.length - 20} more paths\n`;
+  }
+  
+  console.error(debugInfo);
+  throw new Error(debugInfo);
 }
 
 export async function searchCards(query: string): Promise<Card[]> {

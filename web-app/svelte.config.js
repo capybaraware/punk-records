@@ -12,6 +12,8 @@ const config = {
 		adapter: adapter({
 			// Include the assets directory in serverless functions
 			// This ensures card data files are accessible at runtime
+			// Note: includeFiles is evaluated during build, so it will see src/lib/assets
+			// (created by prebuild) but not assets/ (created by postbuild)
 			includeFiles: ['src/lib/assets/**']
 		})
 	}
