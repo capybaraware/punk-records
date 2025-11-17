@@ -38,7 +38,7 @@ try {
   } else {
     throw new Error('Copy completed but destination does not exist');
   }
-} catch (error: any) {
+} catch (error) {
   console.error('Error copying english directory:', error);
   console.error('Error details:', error.message);
   // Fail the build if copy fails - we need these files
