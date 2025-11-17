@@ -11,8 +11,8 @@ const webAppDir = __dirname;
 const projectRoot = join(webAppDir, '..');
 // Source: english directory in project root
 const englishSource = join(projectRoot, 'english');
-// Destination: english directory in web-app
-const englishDest = join(webAppDir, 'english');
+// Destination: english directory in web-app/src/lib/assets
+const englishDest = join(webAppDir, 'src', 'lib', 'assets', 'english');
 
 try {
   console.log('Copying english directory from:', englishSource);
