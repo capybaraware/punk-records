@@ -35,48 +35,78 @@ function getProjectRoot() {
 async function findCardsDirectory(): Promise<string> {
   const cwd = process.cwd();
   const projectRoot = getProjectRoot();
-  const webAppDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-  const libDir = dirname(fileURLToPath(import.meta.url));
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  
+  // In Vercel serverless, the code is bundled, so we need to use __dirname
+  // which points to the actual location of the bundled file
+  const libDir = __dirname;
+  const webAppDir = resolve(libDir, '../..');
   
   // Try multiple possible locations (in order of preference)
   const possiblePaths = [
-    // 1. In web-app/src/lib/assets/english/cards (new location)
+    // 1. In web-app/src/lib/assets/english/cards (new location - relative to bundled file)
     join(libDir, 'assets', 'english', 'cards'),
-    // 2. Relative to web-app directory
+    // 2. Relative to lib directory (for bundled code in Vercel)
+    join(libDir, '..', 'assets', 'english', 'cards'),
+    // 3. Relative to web-app directory
     join(webAppDir, 'src', 'lib', 'assets', 'english', 'cards'),
-    // 3. In web-app/english/cards (copied during build for Vercel - legacy)
+    // 4. In web-app/english/cards (copied during build for Vercel - legacy)
     join(webAppDir, 'english', 'cards'),
-    // 4. Relative to project root (development/local - legacy)
+    // 5. From current working directory (Vercel serverless functions)
+    join(cwd, 'src', 'lib', 'assets', 'english', 'cards'),
+    join(cwd, 'lib', 'assets', 'english', 'cards'),
+    // 6. Relative to project root (development/local - legacy)
     join(projectRoot, 'english', 'cards'),
-    // 5. Relative to current working directory
+    // 7. Relative to current working directory
     join(cwd, 'english', 'cards'),
-    // 6. If we're in web-app, go up one level
+    // 8. If we're in web-app, go up one level
     cwd.includes('web-app') ? join(cwd, '..', 'english', 'cards') : null,
     cwd.endsWith('web-app') ? join(cwd, '..', 'english', 'cards') : null,
-    // 7. From .svelte-kit build directory
+    // 9. From .svelte-kit build directory
     cwd.includes('.svelte-kit') ? join(cwd, '..', 'src', 'lib', 'assets', 'english', 'cards') : null,
+    // 10. Vercel serverless function paths
+    join(cwd, '.vercel', 'output', 'functions', 'api', 'search', 'src', 'lib', 'assets', 'english', 'cards'),
+    join(cwd, '.vercel', 'output', 'static', 'src', 'lib', 'assets', 'english', 'cards'),
   ].filter((p): p is string => p !== null);
+  
+  console.log('Attempting to find cards directory...');
+  console.log('Current working directory:', cwd);
+  console.log('Lib directory (from import.meta.url):', libDir);
+  console.log('Web app directory:', webAppDir);
+  console.log('Project root:', projectRoot);
   
   // Try each path
   for (const path of possiblePaths) {
     try {
       const stats = await fs.stat(path);
       if (stats.isDirectory()) {
-        console.log('Found cards directory at:', path);
-        return path;
+        // Verify it actually contains card files
+        const contents = await fs.readdir(path);
+        if (contents.length > 0) {
+          console.log('Found cards directory at:', path);
+          console.log('Directory contents:', contents.slice(0, 5), '...');
+          return path;
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       // Path doesn't exist, try next one
       continue;
     }
   }
   
-  // If none found, throw error with all attempted paths
-  throw new Error(
-    `Could not find cards directory. Tried: ${possiblePaths.join(', ')}\n` +
+  // If none found, throw error with all attempted paths and debug info
+  const errorMsg = `Could not find cards directory.\n` +
+    `Tried paths:\n${possiblePaths.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}\n` +
     `Current working directory: ${cwd}\n` +
-    `Project root: ${projectRoot}`
-  );
+    `Lib directory: ${libDir}\n` +
+    `Web app directory: ${webAppDir}\n` +
+    `Project root: ${projectRoot}\n` +
+    `__filename: ${__filename}\n` +
+    `__dirname: ${__dirname}`;
+  
+  console.error(errorMsg);
+  throw new Error(errorMsg);
 }
 
 export async function searchCards(query: string): Promise<Card[]> {

@@ -9,9 +9,13 @@ export const GET: RequestHandler = async ({ url }): Promise<Response> => {
     return json(results);
   } catch (err: any) {
     console.error('Search error:', err);
+    console.error('Error stack:', err.stack);
+    console.error('Error message:', err.message);
     // If it's already an HTTP error, rethrow it
     if (err.status) throw err;
-    // Otherwise, create a 500 error
-    throw error(500, 'An error occurred while searching for cards');
+    // Otherwise, create a 500 error with more details
+    const errorMessage = err.message || 'An error occurred while searching for cards';
+    console.error('Full error details:', JSON.stringify(err, null, 2));
+    throw error(500, errorMessage);
   }
 };
