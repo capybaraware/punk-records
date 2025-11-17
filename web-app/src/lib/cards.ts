@@ -45,27 +45,32 @@ async function findCardsDirectory(): Promise<string> {
   
   // Try multiple possible locations (in order of preference)
   const possiblePaths = [
-    // 1. In web-app/src/lib/assets/english/cards (new location - relative to bundled file)
+    // 1. From /var/task/assets (Vercel serverless - postbuild copy location)
+    join(cwd, 'assets', 'english', 'cards'),
+    // 2. From .svelte-kit/output/server/assets (serverless function bundle)
+    join(cwd, '.svelte-kit', 'output', 'server', 'assets', 'english', 'cards'),
+    // 3. Relative to lib directory (for bundled code in Vercel)
     join(libDir, 'assets', 'english', 'cards'),
-    // 2. Relative to lib directory (for bundled code in Vercel)
     join(libDir, '..', 'assets', 'english', 'cards'),
-    // 3. Relative to web-app directory
+    // 4. From .vercel/output/assets (Vercel output)
+    join(cwd, '.vercel', 'output', 'assets', 'english', 'cards'),
+    // 5. Relative to web-app directory
     join(webAppDir, 'src', 'lib', 'assets', 'english', 'cards'),
-    // 4. In web-app/english/cards (copied during build for Vercel - legacy)
+    // 6. In web-app/english/cards (copied during build for Vercel - legacy)
     join(webAppDir, 'english', 'cards'),
-    // 5. From current working directory (Vercel serverless functions)
+    // 7. From current working directory (Vercel serverless functions)
     join(cwd, 'src', 'lib', 'assets', 'english', 'cards'),
     join(cwd, 'lib', 'assets', 'english', 'cards'),
-    // 6. Relative to project root (development/local - legacy)
+    // 8. Relative to project root (development/local - legacy)
     join(projectRoot, 'english', 'cards'),
-    // 7. Relative to current working directory
+    // 9. Relative to current working directory
     join(cwd, 'english', 'cards'),
-    // 8. If we're in web-app, go up one level
+    // 10. If we're in web-app, go up one level
     cwd.includes('web-app') ? join(cwd, '..', 'english', 'cards') : null,
     cwd.endsWith('web-app') ? join(cwd, '..', 'english', 'cards') : null,
-    // 9. From .svelte-kit build directory
+    // 11. From .svelte-kit build directory
     cwd.includes('.svelte-kit') ? join(cwd, '..', 'src', 'lib', 'assets', 'english', 'cards') : null,
-    // 10. Vercel serverless function paths
+    // 12. Vercel serverless function paths
     join(cwd, '.vercel', 'output', 'functions', 'api', 'search', 'src', 'lib', 'assets', 'english', 'cards'),
     join(cwd, '.vercel', 'output', 'static', 'src', 'lib', 'assets', 'english', 'cards'),
   ].filter((p): p is string => p !== null);

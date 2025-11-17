@@ -9,7 +9,11 @@ const config = {
 
 	kit: {
 		// Use Vercel adapter for optimal Vercel deployment
-		adapter: adapter()
+		adapter: adapter({
+			// Include the assets directory in serverless functions
+			// This ensures card data files are accessible at runtime
+			includeFiles: ['src/lib/assets/**']
+		})
 	}
 };
 

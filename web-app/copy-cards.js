@@ -1,7 +1,7 @@
 import { cp } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,6 +14,8 @@ const projectRoot = join(webAppDir, '..');
 const englishSource = join(projectRoot, 'english');
 // Destination: english directory in web-app/src/lib/assets
 const englishDest = join(webAppDir, 'src', 'lib', 'assets', 'english');
+// Also copy to a location that will be included in the serverless function
+const englishDestServer = join(webAppDir, '.svelte-kit', 'output', 'server', 'assets', 'english');
 
 try {
   console.log('Copying english directory from:', englishSource);
@@ -25,13 +27,28 @@ try {
     process.exit(0);
   }
   
-  // Copy the entire english directory
+  // Copy the entire english directory to src/lib/assets
   await cp(englishSource, englishDest, { recursive: true, force: true });
+  console.log('Successfully copied english directory to src/lib/assets');
   
-  console.log('Successfully copied english directory');
+  // Also copy to .svelte-kit/output/server/assets for serverless functions
+  // This ensures the files are accessible in Vercel's serverless environment
+  try {
+    // Create the directory structure if it doesn't exist
+    const serverAssetsDir = join(webAppDir, '.svelte-kit', 'output', 'server', 'assets');
+    if (!existsSync(serverAssetsDir)) {
+      mkdirSync(serverAssetsDir, { recursive: true });
+    }
+    await cp(englishSource, englishDestServer, { recursive: true, force: true });
+    console.log('Successfully copied english directory to .svelte-kit/output/server/assets');
+  } catch (serverError) {
+    // Don't fail if this copy fails - it might not exist yet during prebuild
+    console.warn('Could not copy to .svelte-kit/output/server/assets (this is OK during prebuild):', serverError.message);
+  }
+  
   console.log('Verifying copy...');
   
-  // Verify the copy was successful
+  // Verify the main copy was successful
   if (existsSync(englishDest)) {
     const stats = await import('fs/promises').then(m => m.stat(englishDest));
     console.log(`Destination exists and is a ${stats.isDirectory() ? 'directory' : 'file'}`);
