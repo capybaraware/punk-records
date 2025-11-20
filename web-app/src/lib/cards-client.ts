@@ -12,6 +12,7 @@ export interface CardFilters {
   attributes?: string[];
   types?: string[];
   hasTrigger?: boolean;
+  hasBlocker?: boolean;
 }
 
 export async function searchCards(query: string, filters: CardFilters = {}): Promise<Card[]> {
@@ -70,6 +71,18 @@ export async function searchCards(query: string, filters: CardFilters = {}): Pro
         supabaseQuery = supabaseQuery.not('trigger', 'is', null);
       } else {
         supabaseQuery = supabaseQuery.is('trigger', null);
+      }
+    }
+
+    // Blocker filter - check if effect contains [Blocker]
+    if (filters.hasBlocker !== undefined) {
+      if (filters.hasBlocker) {
+        // Filter for cards where effect contains [Blocker]
+        supabaseQuery = supabaseQuery.ilike('effect', '%[Blocker]%');
+      } else {
+        // Filter for cards where effect does NOT contain [Blocker]
+        // Use .not() with .ilike() to exclude cards with [Blocker] in effect
+        supabaseQuery = supabaseQuery.not('effect', 'ilike', '%[Blocker]%');
       }
     }
 

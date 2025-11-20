@@ -24,6 +24,7 @@
   let counterMin: number | undefined = undefined;
   let counterMax: number | undefined = undefined;
   let hasTrigger: boolean | undefined = undefined;
+  let hasBlocker: boolean | undefined = undefined;
   
   // Available types loaded from database
   let availableTypes: string[] = [];
@@ -128,6 +129,9 @@
     if (hasTrigger !== undefined) {
       filters.hasTrigger = hasTrigger;
     }
+    if (hasBlocker !== undefined) {
+      filters.hasBlocker = hasBlocker;
+    }
     
     // Only search if there's a query or filters
     if (!searchQuery.trim() && Object.keys(filters).length === 0) {
@@ -196,6 +200,7 @@
     counterMin = undefined;
     counterMax = undefined;
     hasTrigger = undefined;
+    hasBlocker = undefined;
     search();
   }
   
@@ -209,11 +214,12 @@
            powerMax !== undefined ||
            counterMin !== undefined ||
            counterMax !== undefined ||
-           hasTrigger !== undefined;
+           hasTrigger !== undefined ||
+           hasBlocker !== undefined;
   }
   
   // Helper function to check if card has blocker
-  function hasBlocker(card: Card): boolean {
+  function cardHasBlocker(card: Card): boolean {
     if (!card.effect) return false;
     // Check for [Blocker] in effect (case-insensitive, handles conditional blockers)
     return /\[Blocker\]/i.test(card.effect);
@@ -288,7 +294,7 @@
     <div class="filters-grid">
       <!-- Color Filters -->
       <div class="filter-group">
-        <label class="filter-label">Colors</label>
+        <div class="filter-label">Colors</div>
         <div class="color-buttons">
           {#each availableColors as color}
             <button
@@ -309,7 +315,7 @@
       
       <!-- Cost Filter -->
       <div class="filter-group">
-        <label class="filter-label">Cost</label>
+        <div class="filter-label">Cost</div>
         <div class="range-inputs">
           <input
             type="number"
@@ -333,7 +339,7 @@
       
       <!-- Power Filter -->
       <div class="filter-group">
-        <label class="filter-label">Power</label>
+        <div class="filter-label">Power</div>
         <div class="range-inputs">
           <input
             type="number"
@@ -357,7 +363,7 @@
       
       <!-- Counter Filter -->
       <div class="filter-group">
-        <label class="filter-label">Counter</label>
+        <div class="filter-label">Counter</div>
         <div class="range-inputs">
           <input
             type="number"
@@ -381,7 +387,7 @@
       
       <!-- Attributes Filter -->
       <div class="filter-group">
-        <label class="filter-label">Attributes</label>
+        <div class="filter-label">Attributes</div>
         <div class="filter-buttons">
           {#each availableAttributes as attr}
             <button
@@ -400,7 +406,7 @@
       
       <!-- Types Filter -->
       <div class="filter-group">
-        <label class="filter-label">Types</label>
+        <div class="filter-label">Types</div>
         <div class="filter-buttons types-buttons">
           {#each availableTypes as type}
             <button
@@ -424,7 +430,7 @@
       
       <!-- Trigger Filter -->
       <div class="filter-group">
-        <label class="filter-label">Has Trigger</label>
+        <div class="filter-label">Has Trigger</div>
         <div class="toggle-buttons">
           <button
             class="toggle-button"
@@ -443,6 +449,33 @@
           >
             No
             {#if hasTrigger === false}
+              <span class="checkmark">✓</span>
+            {/if}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Blocker Filter -->
+      <div class="filter-group">
+        <div class="filter-label">Has Blocker</div>
+        <div class="toggle-buttons">
+          <button
+            class="toggle-button"
+            class:active={hasBlocker === true}
+            on:click={() => hasBlocker = hasBlocker === true ? undefined : true}
+          >
+            Yes
+            {#if hasBlocker === true}
+              <span class="checkmark">✓</span>
+            {/if}
+          </button>
+          <button
+            class="toggle-button"
+            class:active={hasBlocker === false}
+            on:click={() => hasBlocker = hasBlocker === false ? undefined : false}
+          >
+            No
+            {#if hasBlocker === false}
               <span class="checkmark">✓</span>
             {/if}
           </button>
@@ -471,7 +504,7 @@
             </div>
             <div class="card-details">
               <h3>{card.name}</h3>
-              {#if hasBlocker(card)}
+              {#if cardHasBlocker(card)}
                 <div class="blocker-badge">[Blocker]</div>
               {/if}
               <p><strong>ID:</strong> {card.card_id}</p>
@@ -492,6 +525,11 @@
               {#if card.effect}
                 <div class="effect">
                   <strong>Effect:</strong> {card.effect}
+                </div>
+              {/if}
+              {#if card.trigger}
+                <div class="trigger">
+                  <strong>Trigger:</strong> {card.trigger}
                 </div>
               {/if}
             </div>
@@ -1142,6 +1180,34 @@
   .card-color-purple .effect strong,
   .card-color-black .effect strong,
   .card-color-yellow .effect strong {
+    color: white;
+  }
+  
+  .trigger {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  
+  .card-color-red .trigger,
+  .card-color-blue .trigger,
+  .card-color-green .trigger,
+  .card-color-purple .trigger,
+  .card-color-black .trigger,
+  .card-color-yellow .trigger {
+    color: rgba(255, 255, 255, 0.95);
+    border-top-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .card-color-red .trigger strong,
+  .card-color-blue .trigger strong,
+  .card-color-green .trigger strong,
+  .card-color-purple .trigger strong,
+  .card-color-black .trigger strong,
+  .card-color-yellow .trigger strong {
     color: white;
   }
 
