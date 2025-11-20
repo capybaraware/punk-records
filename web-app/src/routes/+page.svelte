@@ -29,6 +29,14 @@
   // Available types loaded from database
   let availableTypes: string[] = [];
   let isLoadingTypes = false;
+  let typesSearchQuery = '';
+  
+  // Filtered types based on search query
+  $: filteredTypes = typesSearchQuery.trim() === '' 
+    ? availableTypes 
+    : availableTypes.filter(type => 
+        type.toLowerCase().includes(typesSearchQuery.toLowerCase())
+      );
 
   function closeModal() {
     isModalOpen = false;
@@ -407,23 +415,32 @@
       <!-- Types Filter -->
       <div class="filter-group">
         <div class="filter-label">Types</div>
+        <input
+          type="text"
+          bind:value={typesSearchQuery}
+          placeholder="Search types..."
+          class="types-search-input"
+        />
         <div class="filter-buttons types-buttons">
-          {#each availableTypes as type}
-            <button
-              class="filter-button"
-              class:active={selectedTypes.includes(type)}
-              on:click={() => toggleType(type)}
-            >
-              {type}
-              {#if selectedTypes.includes(type)}
-                <span class="checkmark">✓</span>
-              {/if}
-            </button>
-          {/each}
           {#if isLoadingTypes}
             <p class="filter-hint">Loading types...</p>
-          {:else if availableTypes.length === 0}
-            <p class="filter-hint">No types available</p>
+          {:else if filteredTypes.length === 0}
+            <p class="filter-hint">
+              {typesSearchQuery.trim() ? `No types found matching "${typesSearchQuery}"` : 'No types available'}
+            </p>
+          {:else}
+            {#each filteredTypes as type}
+              <button
+                class="filter-button"
+                class:active={selectedTypes.includes(type)}
+                on:click={() => toggleType(type)}
+              >
+                {type}
+                {#if selectedTypes.includes(type)}
+                  <span class="checkmark">✓</span>
+                {/if}
+              </button>
+            {/each}
           {/if}
         </div>
       </div>
@@ -497,22 +514,24 @@
             on:keydown={(e) => handleCardKeyDown(e, card)}
             aria-label="View {card.name} card details"
           >
+            {#if card.cost !== null && card.cost !== undefined}
+              <div class="cost-badge">{card.cost}</div>
+            {/if}
+            {#if card.power}
+              <div class="power-badge">{card.power}</div>
+            {/if}
             <div class="card-image-placeholder">
-              <div class="card-id">{card.card_id}</div>
               <div class="card-name">{card.name}</div>
               <div class="view-image-hint">Click to view image</div>
             </div>
+            <div class="card-id-badge">{card.card_id}</div>
             <div class="card-details">
               <h3>{card.name}</h3>
               {#if cardHasBlocker(card)}
                 <div class="blocker-badge">[Blocker]</div>
               {/if}
-              <p><strong>ID:</strong> {card.card_id}</p>
               <p><strong>Rarity:</strong> {card.rarity}</p>
               <p><strong>Cost:</strong> {card.cost ?? 'N/A'}</p>
-              {#if card.power}
-                <p><strong>Power:</strong> {card.power}</p>
-              {/if}
               {#if card.counter}
                 <p><strong>Counter:</strong> {card.counter}</p>
               {/if}
@@ -680,6 +699,91 @@
     display: flex;
     flex-direction: column;
     cursor: pointer;
+    position: relative;
+  }
+  
+  .cost-badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .card-color-red .cost-badge,
+  .card-color-blue .cost-badge,
+  .card-color-green .cost-badge,
+  .card-color-purple .cost-badge,
+  .card-color-black .cost-badge,
+  .card-color-yellow .cost-badge {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .power-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .card-color-red .power-badge,
+  .card-color-blue .power-badge,
+  .card-color-green .power-badge,
+  .card-color-purple .power-badge,
+  .card-color-black .power-badge,
+  .card-color-yellow .power-badge {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .card-id-badge {
+    position: absolute;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+  }
+  
+  .card-color-red .card-id-badge,
+  .card-color-blue .card-id-badge,
+  .card-color-green .card-id-badge,
+  .card-color-purple .card-id-badge,
+  .card-color-black .card-id-badge,
+  .card-color-yellow .card-id-badge {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
   }
   
   .card.leader-card {
@@ -742,22 +846,6 @@
   .card-color-yellow .card-image-placeholder {
     background: rgba(255, 255, 255, 0.1);
     border-bottom-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .card-id {
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-  }
-  
-  .card-color-red .card-id,
-  .card-color-blue .card-id,
-  .card-color-green .card-id,
-  .card-color-purple .card-id,
-  .card-color-black .card-id,
-  .card-color-yellow .card-id {
-    color: rgba(255, 255, 255, 0.8);
   }
 
   .card-name {
@@ -1029,6 +1117,23 @@
     font-weight: 600;
   }
 
+  .types-search-input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+  }
+  
+  .types-search-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+  }
+  
   .types-buttons {
     max-height: 200px;
     overflow-y: auto;
@@ -1101,6 +1206,7 @@
   
   .card-details {
     padding: 1.25rem;
+    padding-bottom: 3.5rem; /* Add extra padding at bottom to prevent overlap with card-id-badge */
     flex-grow: 1;
     display: flex;
     flex-direction: column;
