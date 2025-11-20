@@ -1,23 +1,80 @@
 import { supabase } from './supabase-client';
 import type { Card } from './cards';
 
-export async function searchCards(query: string): Promise<Card[]> {
+export interface CardFilters {
+  colors?: string[];
+  costMin?: number;
+  costMax?: number;
+  powerMin?: number;
+  powerMax?: number;
+  counterMin?: number;
+  counterMax?: number;
+  attributes?: string[];
+  types?: string[];
+  hasTrigger?: boolean;
+}
+
+export async function searchCards(query: string, filters: CardFilters = {}): Promise<Card[]> {
   try {
-    // If no query, return empty array
-    if (!query || !query.trim()) {
-      return [];
+    let supabaseQuery = supabase.from('cards').select('*');
+
+    // Build search conditions for name/card_id
+    if (query && query.trim()) {
+      const searchTerm = query.trim();
+      // Search by card_id or name
+      supabaseQuery = supabaseQuery.or(`card_id.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`);
     }
 
-    const searchTerm = query.trim();
-    // Use .or() with proper PostgREST filter syntax
-    // .ilike is case-insensitive (handles "luffy" matching "Monkey.D.Luffy")
-    // % wildcards allow partial matching anywhere in the string
-    // The %25 you see in the URL is just URL encoding of % - this is normal and correct
-    // The actual query sent to PostgreSQL is: card_id ILIKE '%searchTerm%' OR name ILIKE '%searchTerm%'
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .or(`card_id.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`);
+    // Color filter
+    if (filters.colors && filters.colors.length > 0) {
+      supabaseQuery = supabaseQuery.overlaps('colors', filters.colors);
+    }
+
+    // Cost filter
+    if (filters.costMin !== undefined) {
+      supabaseQuery = supabaseQuery.gte('cost', filters.costMin);
+    }
+    if (filters.costMax !== undefined) {
+      supabaseQuery = supabaseQuery.lte('cost', filters.costMax);
+    }
+
+    // Power filter
+    if (filters.powerMin !== undefined) {
+      supabaseQuery = supabaseQuery.gte('power', filters.powerMin);
+    }
+    if (filters.powerMax !== undefined) {
+      supabaseQuery = supabaseQuery.lte('power', filters.powerMax);
+    }
+
+    // Counter filter
+    if (filters.counterMin !== undefined) {
+      supabaseQuery = supabaseQuery.gte('counter', filters.counterMin);
+    }
+    if (filters.counterMax !== undefined) {
+      supabaseQuery = supabaseQuery.lte('counter', filters.counterMax);
+    }
+
+    // Attributes filter
+    if (filters.attributes && filters.attributes.length > 0) {
+      supabaseQuery = supabaseQuery.overlaps('attributes', filters.attributes);
+    }
+
+    // Types filter
+    if (filters.types && filters.types.length > 0) {
+      supabaseQuery = supabaseQuery.overlaps('types', filters.types);
+    }
+
+    // Trigger filter
+    if (filters.hasTrigger !== undefined) {
+      if (filters.hasTrigger) {
+        supabaseQuery = supabaseQuery.not('trigger', 'is', null);
+      } else {
+        supabaseQuery = supabaseQuery.is('trigger', null);
+      }
+    }
+
+    // Execute the query
+    const { data, error } = await supabaseQuery;
 
     if (error) {
       console.error('Supabase query error:', error);
