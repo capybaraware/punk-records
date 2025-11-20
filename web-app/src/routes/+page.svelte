@@ -3,12 +3,11 @@
   import { fly } from 'svelte/transition';
   import { browser } from '$app/environment';
   import type { Card } from '$lib/cards';
-  import { searchCards, type CardFilters } from '$lib/cards-client';
+  import { searchCards, getAllTypes, type CardFilters } from '$lib/cards-client';
   
   let searchQuery = '';
   let isLoading = false;
   let cards: Card[] = [];
-  let debounceTimer: NodeJS.Timeout;
   let selectedCard: Card | null = null;
   let isModalOpen = false;
   
@@ -26,8 +25,9 @@
   let counterMax: number | undefined = undefined;
   let hasTrigger: boolean | undefined = undefined;
   
-  // Available types will be populated from search results
+  // Available types loaded from database
   let availableTypes: string[] = [];
+  let isLoadingTypes = false;
 
   function closeModal() {
     isModalOpen = false;
@@ -72,9 +72,19 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
     if (browser) {
       window.addEventListener('keydown', handleEscapeKey);
+    }
+    
+    // Load all available types on mount
+    isLoadingTypes = true;
+    try {
+      availableTypes = await getAllTypes();
+    } catch (error) {
+      console.error('Failed to load types:', error);
+    } finally {
+      isLoadingTypes = false;
     }
   });
 
@@ -128,12 +138,6 @@
     isLoading = true;
     try {
       cards = await searchCards(searchQuery, filters);
-      // Update available types from results
-      const allTypes = new Set<string>();
-      cards.forEach(card => {
-        card.types.forEach(type => allTypes.add(type));
-      });
-      availableTypes = Array.from(allTypes).sort();
     } catch (error) {
       console.error('Search failed:', error);
       cards = [];
@@ -142,9 +146,16 @@
     }
   }
   
-  function handleInput() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(search, 300);
+  function handleSearchSubmit(event: Event) {
+    event.preventDefault();
+    search();
+  }
+  
+  function handleSearchKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      search();
+    }
   }
   
   function toggleColor(color: string) {
@@ -153,7 +164,7 @@
     } else {
       selectedColors = [...selectedColors, color];
     }
-    triggerSearch();
+    search();
   }
   
   function toggleAttribute(attr: string) {
@@ -162,7 +173,7 @@
     } else {
       selectedAttributes = [...selectedAttributes, attr];
     }
-    triggerSearch();
+    search();
   }
   
   function toggleType(type: string) {
@@ -171,12 +182,7 @@
     } else {
       selectedTypes = [...selectedTypes, type];
     }
-    triggerSearch();
-  }
-  
-  function triggerSearch() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(search, 300);
+    search();
   }
   
   function clearAllFilters() {
@@ -190,7 +196,7 @@
     counterMin = undefined;
     counterMax = undefined;
     hasTrigger = undefined;
-    triggerSearch();
+    search();
   }
   
   function hasActiveFilters(): boolean {
@@ -246,23 +252,28 @@
 <div class="container">
   <h1>One Piece Card Search</h1>
   
-  <div class="search-container">
-    <input 
-      type="search"
-      inputmode="search"
-      bind:value={searchQuery}
-      on:input={handleInput}
-      placeholder="Search by card ID or name..."
-      class="search-input"
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      spellcheck="false"
-    />
+  <form class="search-container" on:submit={handleSearchSubmit}>
+    <div class="search-input-wrapper">
+      <input 
+        type="search"
+        inputmode="search"
+        bind:value={searchQuery}
+        on:keydown={handleSearchKeyDown}
+        placeholder="Search by card ID or name..."
+        class="search-input"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button type="submit" class="search-button" aria-label="Search">
+        Search
+      </button>
+    </div>
     {#if isLoading}
       <div class="loading">Searching...</div>
     {/if}
-  </div>
+  </form>
   
   <div class="filters-section">
     <div class="filters-header">
@@ -304,7 +315,7 @@
             type="number"
             placeholder="Min"
             bind:value={costMin}
-            on:input={triggerSearch}
+            on:input={search}
             min="0"
             class="range-input"
           />
@@ -313,7 +324,7 @@
             type="number"
             placeholder="Max"
             bind:value={costMax}
-            on:input={triggerSearch}
+            on:input={search}
             min="0"
             class="range-input"
           />
@@ -328,7 +339,7 @@
             type="number"
             placeholder="Min"
             bind:value={powerMin}
-            on:input={triggerSearch}
+            on:input={search}
             min="0"
             class="range-input"
           />
@@ -337,7 +348,7 @@
             type="number"
             placeholder="Max"
             bind:value={powerMax}
-            on:input={triggerSearch}
+            on:input={search}
             min="0"
             class="range-input"
           />
@@ -352,7 +363,7 @@
             type="number"
             placeholder="Min"
             bind:value={counterMin}
-            on:input={triggerSearch}
+            on:input={search}
             min="0"
             class="range-input"
           />
@@ -361,7 +372,7 @@
             type="number"
             placeholder="Max"
             bind:value={counterMax}
-            on:input={triggerSearch}
+            on:input={search}
             min="0"
             class="range-input"
           />
@@ -403,8 +414,10 @@
               {/if}
             </button>
           {/each}
-          {#if availableTypes.length === 0}
-            <p class="filter-hint">Search to see available types</p>
+          {#if isLoadingTypes}
+            <p class="filter-hint">Loading types...</p>
+          {:else if availableTypes.length === 0}
+            <p class="filter-hint">No types available</p>
           {/if}
         </div>
       </div>
@@ -539,8 +552,14 @@
     position: relative;
   }
   
+  .search-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+  
   .search-input {
-    width: 100%;
+    flex: 1;
     padding: 0.8rem 1rem;
     font-size: 1rem;
     border: 2px solid var(--border-color);
@@ -559,6 +578,29 @@
     outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  
+  .search-button {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: 2px solid var(--accent-color);
+    border-radius: 8px;
+    background-color: var(--accent-color);
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  
+  .search-button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .search-button:active {
+    transform: translateY(0);
   }
   
   .loading {

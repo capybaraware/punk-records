@@ -89,3 +89,32 @@ export async function searchCards(query: string, filters: CardFilters = {}): Pro
   }
 }
 
+export async function getAllTypes(): Promise<string[]> {
+  try {
+    // Query all cards to get all unique types
+    // We only need the types field, so we can select just that
+    const { data, error } = await supabase
+      .from('cards')
+      .select('types');
+
+    if (error) {
+      console.error('Supabase query error:', error);
+      throw new Error(`Database query failed: ${error.message}`);
+    }
+
+    // Extract all unique types from all cards
+    const allTypes = new Set<string>();
+    (data || []).forEach((card: { types: string[] }) => {
+      if (card.types && Array.isArray(card.types)) {
+        card.types.forEach(type => allTypes.add(type));
+      }
+    });
+
+    // Return sorted array of unique types
+    return Array.from(allTypes).sort();
+  } catch (error) {
+    console.error('Error fetching types:', error);
+    throw error;
+  }
+}
+
