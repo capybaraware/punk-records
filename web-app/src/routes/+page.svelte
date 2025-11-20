@@ -209,6 +209,7 @@
     counterMax = undefined;
     hasTrigger = undefined;
     hasBlocker = undefined;
+    typesSearchQuery = ''; // Clear types search query
     search();
   }
   
@@ -292,11 +293,14 @@
   <div class="filters-section">
     <div class="filters-header">
       <h2>Filters</h2>
-      {#if hasActiveFilters()}
-        <button class="clear-filters-btn" on:click={clearAllFilters}>
-          Clear All Filters
-        </button>
-      {/if}
+      <button 
+        class="clear-filters-btn" 
+        class:disabled={!hasActiveFilters()}
+        on:click={clearAllFilters}
+        disabled={!hasActiveFilters()}
+      >
+        Clear All Filters
+      </button>
     </div>
     
     <div class="filters-grid">
@@ -998,9 +1002,14 @@
     transition: all 0.2s ease;
   }
 
-  .clear-filters-btn:hover {
+  .clear-filters-btn:hover:not(:disabled) {
     background: var(--bg-tertiary);
     border-color: var(--accent-color);
+  }
+  
+  .clear-filters-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .filters-grid {
