@@ -3,6 +3,7 @@
   import { fly } from 'svelte/transition';
   import { browser } from '$app/environment';
   import type { Card } from '$lib/cards';
+  import { searchCards } from '$lib/cards-client';
   
   let searchQuery = '';
   let isLoading = false;
@@ -74,8 +75,7 @@
     
     isLoading = true;
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-      cards = await response.json() as Card[];
+      cards = await searchCards(searchQuery);
     } catch (error) {
       console.error('Search failed:', error);
       cards = [];
@@ -124,13 +124,13 @@
             aria-label="View {card.name} card details"
           >
             <div class="card-image-placeholder">
-              <div class="card-id">{card.id}</div>
+              <div class="card-id">{card.card_id}</div>
               <div class="card-name">{card.name}</div>
               <div class="view-image-hint">Click to view image</div>
             </div>
             <div class="card-details">
               <h3>{card.name}</h3>
-              <p><strong>ID:</strong> {card.id}</p>
+              <p><strong>ID:</strong> {card.card_id}</p>
               <p><strong>Rarity:</strong> {card.rarity}</p>
               <p><strong>Cost:</strong> {card.cost}</p>
               {#if card.power}
