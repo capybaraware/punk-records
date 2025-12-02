@@ -47,9 +47,28 @@
 	}
 
 	function formatDuration(seconds: number): string {
+		if (!seconds || isNaN(seconds) || seconds === 0) {
+			return '0m 0s';
+		}
 		const mins = Math.floor(seconds / 60);
 		const secs = Math.floor(seconds % 60);
 		return `${mins}m ${secs}s`;
+	}
+
+	// Parse GA4 date format (YYYYMMDD) to Date object
+	function parseGADate(dateStr: string): Date | null {
+		if (!dateStr || dateStr.length !== 8) return null;
+		const year = parseInt(dateStr.substring(0, 4));
+		const month = parseInt(dateStr.substring(4, 6)) - 1; // Month is 0-indexed
+		const day = parseInt(dateStr.substring(6, 8));
+		return new Date(year, month, day);
+	}
+
+	// Format GA4 date for display
+	function formatGADate(dateStr: string): string {
+		const date = parseGADate(dateStr);
+		if (!date || isNaN(date.getTime())) return dateStr;
+		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 	}
 
 	// Process analytics data
@@ -57,18 +76,31 @@
 		analyticsData
 			? {
 					// Overview metrics
-					totals: analyticsData.overview?.rows?.reduce(
-						(acc: any, row: any) => {
+					totals: (() => {
+						const rows = analyticsData.overview?.rows || [];
+						let totalSessions = 0;
+						let totalPageViews = 0;
+						let totalDuration = 0;
+						let durationCount = 0;
+
+						rows.forEach((row: any) => {
 							const metrics = row.metricValues || [];
-							return {
-								sessions: acc.sessions + parseInt(metrics[1]?.value || '0'),
-								pageViews: acc.pageViews + parseInt(metrics[2]?.value || '0'),
-								avgDuration: acc.totalDuration + parseFloat(metrics[3]?.value || '0'),
-								count: acc.count + 1,
-							};
-						},
-						{ sessions: 0, pageViews: 0, avgDuration: 0, count: 0 }
-					) || { sessions: 0, pageViews: 0, avgDuration: 0, count: 0 },
+							totalSessions += parseInt(metrics[1]?.value || '0');
+							totalPageViews += parseInt(metrics[2]?.value || '0');
+							const duration = parseFloat(metrics[3]?.value || '0');
+							if (!isNaN(duration) && duration > 0) {
+								totalDuration += duration;
+								durationCount++;
+							}
+						});
+
+						return {
+							sessions: totalSessions,
+							pageViews: totalPageViews,
+							totalDuration: totalDuration,
+							durationCount: durationCount,
+						};
+					})(),
 					// Sessions over time
 					sessionsByDate:
 						analyticsData.overview?.rows?.reduce((acc: any, row: any) => {
@@ -121,8 +153,8 @@
 
 	// Calculate average session duration
 	let avgSessionDuration = $derived(
-		processedData?.totals.count
-			? processedData.totals.avgDuration / processedData.totals.count
+		processedData?.totals.durationCount && processedData.totals.durationCount > 0
+			? processedData.totals.totalDuration / processedData.totals.durationCount
 			: 0
 	);
 
@@ -253,12 +285,12 @@
 							<line x1="10" y1="10" x2="10" y2="190" stroke="#e1dfdd" stroke-width="1" />
 							<line x1="10" y1="190" x2="390" y2="190" stroke="#e1dfdd" stroke-width="1" />
 							{#if sessionsByDateArray.length > 0}
+								{@const maxSessions = Math.max(...sessionsByDateArray.map((d) => d.sessions), 1)}
 								{#each sessionsByDateArray as item, i}
-									{@const x = (i / (sessionsByDateArray.length - 1)) * 380 + 10}
-									{@const maxSessions = Math.max(...sessionsByDateArray.map((d) => d.sessions))}
+									{@const x = sessionsByDateArray.length > 1 ? (i / (sessionsByDateArray.length - 1)) * 380 + 10 : 200}
 									{@const y = 190 - (item.sessions / maxSessions) * 170}
 									{#if i > 0}
-										{@const prevX = ((i - 1) / (sessionsByDateArray.length - 1)) * 380 + 10}
+										{@const prevX = sessionsByDateArray.length > 1 ? ((i - 1) / (sessionsByDateArray.length - 1)) * 380 + 10 : 200}
 										{@const prevY = 190 - (sessionsByDateArray[i - 1].sessions / maxSessions) * 170}
 										<line x1={prevX} y1={prevY} x2={x} y2={y} stroke="#0078d4" stroke-width="2" />
 									{/if}
@@ -270,7 +302,7 @@
 							{#if sessionsByDateArray.length > 0}
 								{#each sessionsByDateArray.slice(-5) as item}
 									<div class="chart-label">
-										{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+										{formatGADate(item.date)}
 									</div>
 								{/each}
 							{:else}
@@ -281,57 +313,6 @@
 								<div class="chart-label"></div>
 							{/if}
 						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- Acquisition Report -->
-			<div class="dashboard-card acquisition-report">
-				<h2>Acquisition report</h2>
-				<div class="report-subtitle">Traffic channel Source / Medium</div>
-				<div class="chart-container">
-					<div class="stacked-bar-chart">
-						<div class="bars-container">
-							{#if acquisitionByDate.length > 0}
-								{#each acquisitionByDate.slice(-5) as dayData}
-									{@const maxSessions = Math.max(...acquisitionByDate.map((d) => d.sources.reduce((sum: number, s: any) => sum + s.sessions, 0)))}
-									{@const totalSessions = dayData.sources.reduce((sum: number, s: any) => sum + s.sessions, 0)}
-									<div class="bar-group">
-										<div class="stacked-bar" style="height: {(totalSessions / maxSessions) * 100}%">
-											{#each dayData.sources as source}
-												{@const percentage = (source.sessions / totalSessions) * 100}
-												<div
-													class="bar-segment"
-													style="height: {percentage}%; background-color: {getSourceColor(source.source)}"
-													title="{source.source}: {formatNumber(source.sessions)}"
-												></div>
-											{/each}
-										</div>
-										<div class="bar-label">
-											{new Date(dayData.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-										</div>
-									</div>
-								{/each}
-							{:else}
-								<!-- Empty bars -->
-								{#each Array(5) as _, i}
-									<div class="bar-group">
-										<div class="stacked-bar" style="height: 0%"></div>
-										<div class="bar-label"></div>
-									</div>
-								{/each}
-							{/if}
-						</div>
-						{#if acquisitionByDate.length > 0}
-							<div class="chart-legend">
-								{#each getUniqueSources(acquisitionByDate) as source}
-									<div class="legend-item">
-										<span class="legend-color" style="background-color: {getSourceColor(source)}"></span>
-										<span class="legend-label">{formatSourceName(source)}</span>
-									</div>
-								{/each}
-							</div>
-						{/if}
 					</div>
 				</div>
 			</div>
@@ -572,7 +553,7 @@
 	.dashboard-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		grid-template-rows: auto auto;
+		grid-template-rows: repeat(2, 1fr);
 		gap: 1.5rem;
 	}
 
@@ -581,6 +562,9 @@
 		border-radius: 8px;
 		padding: 1.5rem;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		min-height: 400px;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.dashboard-card h2 {
@@ -601,24 +585,19 @@
 		grid-row: 1;
 	}
 
-	.acquisition-report {
+	.popular-pages {
 		grid-column: 2;
 		grid-row: 1;
 	}
 
-	.popular-pages {
+	.sessions-country {
 		grid-column: 1;
 		grid-row: 2;
 	}
 
-	.sessions-country {
+	.sessions-device {
 		grid-column: 2;
 		grid-row: 2;
-	}
-
-	.sessions-device {
-		grid-column: 1 / -1;
-		grid-row: 3;
 	}
 
 	.metrics-row {
@@ -645,6 +624,9 @@
 
 	.chart-container {
 		margin-top: 1rem;
+		flex: 1;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.chart-svg {
@@ -664,6 +646,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		flex: 1;
 	}
 
 	.bars-container {
@@ -888,7 +871,6 @@
 		}
 
 		.audience-overview,
-		.acquisition-report,
 		.popular-pages,
 		.sessions-country,
 		.sessions-device {
