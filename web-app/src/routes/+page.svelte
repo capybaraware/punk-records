@@ -233,6 +233,15 @@
     // Check for [Blocker] in effect (case-insensitive, handles conditional blockers)
     return /\[Blocker\]/i.test(card.effect);
   }
+
+  // Helper function to format effect text with line breaks
+  function formatEffectText(text: string): string {
+    if (!text) return '';
+    // Replace various br tag formats with actual line breaks
+    return text
+      .replace(/<\/?br\s*\/?>/gi, '\n')
+      .replace(/\n/g, '<br>');
+  }
   
   // Helper function to get color hex for styling
   function getColorHex(color: string): string {
@@ -552,12 +561,12 @@
               {/if}
               {#if card.effect}
                 <div class="effect">
-                  <strong>Effect:</strong> {card.effect}
+                  <strong>Effect:</strong> {@html formatEffectText(card.effect)}
                 </div>
               {/if}
               {#if card.trigger}
                 <div class="trigger">
-                  <strong>Trigger:</strong> {card.trigger}
+                  <strong>Trigger:</strong> {@html formatEffectText(card.trigger)}
                 </div>
               {/if}
             </div>
