@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { page } from '$app/stores';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
@@ -23,12 +24,34 @@
 			const theme = stored || 'dark';
 			isDark = theme === 'dark';
 			document.documentElement.setAttribute('data-theme', theme);
+
+			// Initialize Google Analytics
+			window.dataLayer = window.dataLayer || [];
+			function gtag(...args: any[]) {
+				window.dataLayer.push(args);
+			}
+			gtag('js', new Date());
+			gtag('config', 'G-N9JW1TDT1X');
+
+			// Track page views on navigation
+			const unsubscribe = page.subscribe((page) => {
+				gtag('config', 'G-N9JW1TDT1X', {
+					page_path: page.url.pathname + page.url.search
+				});
+			});
+
+			return () => {
+				unsubscribe();
+			};
 		}
 	});
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	{#if browser}
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-N9JW1TDT1X"></script>
+	{/if}
 </svelte:head>
 
 <div class="theme-toggle-container">
@@ -95,12 +118,17 @@
 
 	:global(html) {
 		color-scheme: dark light;
+		overflow-x: hidden;
 	}
 
 	:global(body) {
 		background-color: var(--bg-primary);
 		color: var(--text-primary);
 		transition: background-color 0.3s ease, color 0.3s ease;
+		overflow-x: hidden;
+		width: 100%;
+		max-width: 100vw;
+		box-sizing: border-box;
 	}
 
 	.theme-toggle-container {

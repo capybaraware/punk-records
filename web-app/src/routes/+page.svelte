@@ -265,7 +265,12 @@
 </script>
 
 <div class="container">
-  <h1>One Piece Card Search</h1>
+  <div class="page-header">
+    <h1>One Piece Card Search</h1>
+    <a href="/analytics" class="analytics-link">
+      Analytics
+    </a>
+  </div>
   
   <form class="search-container" on:submit={handleSearchSubmit}>
     <div class="search-input-wrapper">
@@ -606,23 +611,70 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .page-header h1 {
+    margin: 0;
+  }
+  
+  .analytics-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    text-decoration: none;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px var(--shadow-color);
+  }
+  
+  .analytics-link:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px var(--shadow-color);
   }
   
   .search-container {
     margin: 2rem 0;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .search-input-wrapper {
     display: flex;
     gap: 0.5rem;
     align-items: stretch;
+    flex-wrap: wrap;
+    width: 100%;
   }
   
   .search-input {
     flex: 1;
-    padding: 0.8rem 1rem;
-    font-size: 1rem;
+    min-width: 200px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
     border: 2px solid var(--border-color);
     border-radius: 8px;
     box-sizing: border-box;
@@ -642,8 +694,8 @@
   }
   
   .search-button {
-    padding: 0.8rem 1.5rem;
-    font-size: 1rem;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
     font-weight: 600;
     border: 2px solid var(--accent-color);
     border-radius: 8px;
@@ -652,6 +704,8 @@
     cursor: pointer;
     transition: all 0.2s ease;
     font-family: inherit;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   
   .search-button:hover {
@@ -674,6 +728,8 @@
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1rem;
     margin-top: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   @media (max-width: 640px) {
@@ -976,6 +1032,9 @@
     background: var(--card-bg);
     border-radius: 12px;
     border: 1px solid var(--border-color);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .filters-header {
@@ -1014,8 +1073,10 @@
 
   .filters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .filter-group {
@@ -1034,6 +1095,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .color-button {
@@ -1072,16 +1135,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    flex-wrap: wrap;
   }
 
   .range-input {
     flex: 1;
-    padding: 0.5rem;
+    min-width: 80px;
+    max-width: 120px;
+    padding: 0.4rem 0.5rem;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background: var(--bg-secondary);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    box-sizing: border-box;
   }
 
   .range-input:focus {
@@ -1091,14 +1160,18 @@
   }
 
   .range-inputs span {
+    flex-shrink: 0;
+    white-space: nowrap;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .filter-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .filter-button {
@@ -1128,14 +1201,15 @@
 
   .types-search-input {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.4rem 0.5rem;
     margin-bottom: 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background: var(--bg-secondary);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     transition: border-color 0.2s ease;
+    box-sizing: border-box;
   }
   
   .types-search-input:focus {
@@ -1146,6 +1220,9 @@
   .types-buttons {
     max-height: 200px;
     overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .filter-hint {
